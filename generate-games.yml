@@ -1,0 +1,36 @@
+name: Generate Game List
+
+on:
+  push:
+    paths:
+      - 'games/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate game list
+        run: |
+          echo "[" > game-list.json
+          first=true
+          for file in games/*.html; do
+            name=$(basename "$file")
+            if [ "$first" = true ]; then
+              first=false
+            else
+              echo "," >> game-list.json
+            fi
+            echo "{\"name\":\"$name\",\"file\":\"games/$name\"}" >> game-list.json
+          done
+          echo "]" >> game-list.json
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add game-list.json
+          git commit -m "Auto-update game list" || exit 0
+          git push
