@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZlyUnb#ck | Gubbzly Core v6.0</title>
+
+    <style>
+        :root {
+            --primary: #00f2ff;
+            --secondary: #7000ff;
+            --bg: #050505;
+            --glass: rgba(255, 255, 255, 0.03);
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background-color: var(--bg);
+            background-image: radial-gradient(circle at 2px 2px, var(--border) 1px, transparent 0);
+            background-size: 40px 40px;
+            color: white;
+            display: flex;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .watermark-fixed {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.2);
+            pointer-events: none;
+        }
+
+        .watermark-float {
+            position: absolute;
+            top: 50%;
+            left: 55%;
+            transform: translate(-50%, -50%) rotate(-10deg);
+            font-size: 6rem;
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.015);
+            pointer-events: none;
+        }
+
+        #sidebar {
+            width: 400px;
+            background: rgba(8, 8, 8, 0.95);
+            backdrop-filter: blur(40px);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 25px;
+        }
+
+        h2 {
+            margin: 0;
+            font-size: 1.6rem;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        #btnScan {
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            border: none;
+            color: white;
+            padding: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+
+        #searchInput {
+            width: 100%;
+            padding: 12px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            color: var(--primary);
+        }
+
+        #fileList {
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        .file-link {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .file-link.hidden {
+            display: none;
+        }
+
+        #dashboard {
+            flex-grow: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto 1fr auto;
+            gap: 20px;
+            padding: 30px;
+        }
+
+        .widget {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            padding: 20px;
+        }
+
+        #visualizer {
+            grid-column: span 2;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: center;
+        }
+
+        .node {
+            width: 6px;
+            height: 6px;
+            background: var(--primary);
+        }
+
+        #terminal {
+            grid-column: span 2;
+            background: rgba(0,0,0,0.5);
+            height: 120px;
+            overflow-y: auto;
+            font-size: 0.75rem;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="watermark-float">ZlyUnb#ck // GUBBZLY</div>
+<div class="watermark-fixed">://tiktok.com</div>
+
+<div id="sidebar">
+    <h2>ZlyUnb#ck</h2>
+
+    <button id="btnScan">Initiate Zly Scan</button>
+
+    <input type="text" id="searchInput" placeholder="SEARCH...">
+
+    <div id="fileList"></div>
+</div>
+
+<div id="dashboard">
+    <div class="widget">Files: <span id="countNum">00</span></div>
+    <div class="widget">Uptime: <span id="uptime">00:00</span></div>
+    <div id="visualizer" class="widget"></div>
+    <div id="terminal" class="widget"></div>
+</div>
+
+<script>
+const btnScan = document.getElementById('btnScan');
+const fileList = document.getElementById('fileList');
+const searchInput = document.getElementById('searchInput');
+const terminal = document.getElementById('terminal');
+const countNum = document.getElementById('countNum');
+const visualizer = document.getElementById('visualizer');
+
+const log = (msg) => {
+    const div = document.createElement('div');
+    div.textContent = ">> " + msg;
+    terminal.appendChild(div);
+    terminal.scrollTop = terminal.scrollHeight;
+};
+
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => e.target.classList.toggle('is-visible', e.isIntersecting));
+}, { root: fileList });
+
+searchInput.oninput = () => {
+    const term = searchInput.value.toLowerCase();
+    fileList.querySelectorAll('.file-link').forEach(item => {
+        item.classList.toggle('hidden', !item.textContent.toLowerCase().includes(term));
+    });
+};
+
+btnScan.onclick = async () => {
+    try {
+        log("Fetching game list...");
+
+        const res = await fetch('./game-list.json', { cache: "no-store" });
+        const games = await res.json();
+
+        fileList.innerHTML = "";
+        visualizer.innerHTML = "";
+
+        countNum.textContent = String(games.length).padStart(2, '0');
+
+        games.forEach(game => {
+            const div = document.createElement('div');
+            div.className = 'file-link';
+            div.textContent = game.name;
+
+            div.onclick = async () => {
+                try {
+                    log("Loading " + game.name);
+
+                    const res = await fetch(game.file, { cache: "no-store" });
+                    const html = await res.text();
+
+                    const win = window.open();
+                    if (!win) return log("Popup blocked");
+
+                    win.document.open();
+                    win.document.write(html);
+                    win.document.close();
+
+                } catch {
+                    log("Error loading game");
+                }
+            };
+
+            fileList.appendChild(div);
+            observer.observe(div);
+
+            const node = document.createElement('div');
+            node.className = 'node';
+            visualizer.appendChild(node);
+        });
+
+        log("System Sync: SUCCESS");
+
+    } catch (err) {
+        log("Failed to load game list");
+    }
+};
+
+let secs = 0;
+setInterval(() => {
+    secs++;
+    document.getElementById('uptime').textContent =
+        String(Math.floor(secs/60)).padStart(2,'0') + ":" + String(secs%60).padStart(2,'0');
+}, 1000);
+</script>
+
+</body>
+</html>
